@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "DeadLockProfiler.h"
 
+/*--------------------
+	DeadLockProfiler
+---------------------*/
+
 void DeadLockProfiler::PushLock(const char* name)
 {
 	LockGuard guard(_lock);
@@ -32,7 +36,7 @@ void DeadLockProfiler::PushLock(const char* name)
 			}
 		}
 	}
-	
+
 	_lockStack.push(lockId);
 }
 
@@ -59,9 +63,7 @@ void DeadLockProfiler::CheckCycle()
 	_parent = vector<int32>(lockCount, -1);
 
 	for (int32 lockId = 0; lockId < lockCount; lockId++)
-	{
 		Dfs(lockId);
-	}
 
 	_discoveredOrder.clear();
 	_finished.clear();
@@ -83,7 +85,7 @@ void DeadLockProfiler::Dfs(int32 here)
 	}
 
 	set<int32>& nextSet = findIt->second;
-	for (int32 there : nextSet) 
+	for (int32 there : nextSet)
 	{
 		if (_discoveredOrder[there] == -1)
 		{

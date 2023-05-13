@@ -9,6 +9,7 @@
 
 #include "PlayerManager.h"
 #include "AccountManager.h"
+#include "UserManager.h"
 
 class TestLock
 {
@@ -69,40 +70,61 @@ void ThreadRead()
 }
 
 
+
+
+bool IsPrime(int num)
+{
+	if (num == 1) return false;
+	if (num == 2) return true;
+
+	for (int i = 2; i < num; i++)
+	{
+		if (num % i == 0)
+			return false;
+	}
+	return true;
+}
+
+
+int CountPrimes(int s, int e)
+{
+	int count = 0;
+	for (int i = s; i < e; i++)
+	{
+		if (IsPrime(i))
+			count++;
+	}
+	return count;
+}
+
 int main()
 {
-	/*for (int32 i = 0; i < 2; i++)
+	vector<thread> threads;
+	atomic<int> count = 0;
+
+	const int MAX_NUMBER = 10;
+
+	int coreCount = thread::hardware_concurrency();
+	cout << coreCount << endl;
+
+	int jobCount = MAX_NUMBER / coreCount + 1;
+
+	for (int i = 0; i < coreCount; i++)
 	{
-		GThreadManager->Launch(ThreadWrite);
+		int s = i * jobCount + 1;
+		int e = min(MAX_NUMBER, (i + 1) * jobCount);
+
+		threads.push_back(thread([s, e, &count]() {
+			count += CountPrimes(s, e);
+			}));
 	}
 
-	for (int32 i = 0; i < 100; i++)
+	for (thread& t : threads)
 	{
-		GThreadManager->Launch(ThreadRead);
+		t.join();
 	}
 
-	GThreadManager->Join();*/
-
-	GThreadManager->Launch([=]
-		{
-			while (true)
-			{
-				cout << "PlayerThenAcccount" << endl;
-				GPlayerManager.PlayerThenAccount();
-				this_thread::sleep_for(100ms);
-			}
-		});
-
-	GThreadManager->Launch([=]
-		{
-			while (true)
-			{
-				cout << "AccountThenPlayer" << endl;
-				GAccountManager.AccountThenPlayer();
-				this_thread::sleep_for(100ms);
-			}
-		});
-	GThreadManager->Join();
+	cout << "count: " << count << endl;
 
 } 
 

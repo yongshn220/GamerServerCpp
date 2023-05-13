@@ -14,4 +14,6 @@ void PlayerManager::PlayerThenAccount()
 void PlayerManager::Lock()
 {
 	WRITE_LOCK;
+	
+	this_thread::sleep_for(10ms);
 }
