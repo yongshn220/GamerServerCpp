@@ -6,125 +6,78 @@
 #include <windows.h>
 #include <future>
 #include "ThreadManager.h"
+#include "RefCounting.h"
 
-#include "PlayerManager.h"
-#include "AccountManager.h"
-#include "UserManager.h"
-
-class TestLock
+class Wraight : public RefCountable
 {
-	USE_LOCK;
-
 public:
-	int32 TestRead()
-	{
-		READ_LOCK; 
-
-		if (_queue.empty())
-			return -1;
-
-		return _queue.front();
-	}
-
-	void TestPush()
-	{
-		WRITE_LOCK;
-
-		_queue.push(rand() % 100);
-	}
-
-	void TestPop()
-	{
-		WRITE_LOCK;
-
-		if (_queue.empty() == false)
-			_queue.pop();
-	}
-
-private:
-	queue<int32> _queue;
-
+	int _hp = 150;
+	int _posX = 0;
+	int _posY = 0;
 };
 
-TestLock testLock;
-
-
-void ThreadWrite()
+class Missile : public RefCountable
 {
-	while (true)
+public:
+	void SetTarget(Wraight* target)
 	{
-		testLock.TestPush();
-		this_thread::sleep_for(1ms);
-		testLock.TestPop();
+		_target = target;
+		target->AddRef();
 	}
-}
 
-void ThreadRead()
-{
-	while (true)
+	bool Update()
 	{
-		int32 value = testLock.TestRead();
-		cout << value << endl;
-		this_thread::sleep_for(1ms);
+		if (_target == nullptr) return true;
+		int posX = _target->_posX;
+		int posY = _target->_posY;
+
+		if (_target->_hp == 0)
+		{
+			_target->ReleaseRef();
+			_target = nullptr;
+		}
+		return false;
 	}
-}
+
+	Wraight* _target = nullptr;
+};
 
 
-
-
-bool IsPrime(int num)
-{
-	if (num == 1) return false;
-	if (num == 2) return true;
-
-	for (int i = 2; i < num; i++)
-	{
-		if (num % i == 0)
-			return false;
-	}
-	return true;
-}
-
-
-int CountPrimes(int s, int e)
-{
-	int count = 0;
-	for (int i = s; i < e; i++)
-	{
-		if (IsPrime(i))
-			count++;
-	}
-	return count;
-}
+using WraightRef = TSharedPtr<Wraight>;
+using MissileRef = TSharedPtr<Missile>;
 
 int main()
 {
-	vector<thread> threads;
-	atomic<int> count = 0;
+	WraightRef wraight(new Wraight());
+	wraight->ReleaseRef();
+	MissileRef missile(new Missile());
+	missile->ReleaseRef();
 
-	const int MAX_NUMBER = 10;
+	missile->SetTarget(wraight);
 
-	int coreCount = thread::hardware_concurrency();
-	cout << coreCount << endl;
+	wraight->_hp = 0;
+	wraight = nullptr;
+	wraight = WraightRef(nullptr);
 
-	int jobCount = MAX_NUMBER / coreCount + 1;
 
-	for (int i = 0; i < coreCount; i++)
+
+
+	while (true)
 	{
-		int s = i * jobCount + 1;
-		int e = min(MAX_NUMBER, (i + 1) * jobCount);
-
-		threads.push_back(thread([s, e, &count]() {
-			count += CountPrimes(s, e);
-			}));
+		if (missile)
+		{
+			if (missile->Update())
+			{
+				missile->ReleaseRef();
+				missile = nullptr;
+			}
+		}
 	}
-
-	for (thread& t : threads)
+	
+	if (missile)
 	{
-		t.join();
+		missile->ReleaseRef();
+		missile = nullptr;
 	}
-
-	cout << "count: " << count << endl;
-
 } 
 

@@ -29,3 +29,4 @@ private:
 	vector<bool>    _finished;
 	vector<int32>   _parent;
 };
+ 
