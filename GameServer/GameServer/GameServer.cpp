@@ -8,6 +8,7 @@
 #include "ThreadManager.h"
 #include "RefCounting.h"
 
+
 class Wraight : public RefCountable
 {
 public:
@@ -16,13 +17,14 @@ public:
 	int _posY = 0;
 };
 
+using WraightRef = TSharedPtr<Wraight>;
+
 class Missile : public RefCountable
 {
 public:
-	void SetTarget(Wraight* target)
+	void SetTarget(WraightRef target)
 	{
 		_target = target;
-		target->AddRef();
 	}
 
 	bool Update()
@@ -39,11 +41,9 @@ public:
 		return false;
 	}
 
-	Wraight* _target = nullptr;
+	WraightRef _target = nullptr;
 };
 
-
-using WraightRef = TSharedPtr<Wraight>;
 using MissileRef = TSharedPtr<Missile>;
 
 int main()
@@ -57,9 +57,6 @@ int main()
 
 	wraight->_hp = 0;
 	wraight = nullptr;
-	wraight = WraightRef(nullptr);
-
-
 
 
 	while (true)

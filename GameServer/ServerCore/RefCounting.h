@@ -35,14 +35,24 @@ public:
 	TSharedPtr(T* ptr) { Set(ptr); }
 
 	// Copy
-	TSharePtr(const TSharedPtr& rhs) { Set(rhs._ptr); }
+	TSharedPtr(const TSharedPtr& rhs) 
+	{ 
+		Set(rhs._ptr); 
+		cout << "Copy" << endl;
+	}
+
 	// Move
-	TSharedPtr(TSharedPtr&& rhs) { _ptr = rhs._ptr; rhs._ptr = nullptr; }
+	TSharedPtr(TSharedPtr&& rhs) 
+	{ 
+		_ptr = rhs._ptr;
+		rhs._ptr = nullptr;
+		cout << "Move" << endl;
+	}
 	// Copy Inheritance relationship
 	template<typename U>
 	TSharedPtr(const TSharedPtr<U>& rhs) { Set(static_cast<T*>(rhs._ptr)); }
 	
-	~TSharedPtr() { _ptr.Release(); }
+	~TSharedPtr() { Release(); }
 
 public:
 	TSharedPtr& operator=(const TSharedPtr& rhs)
