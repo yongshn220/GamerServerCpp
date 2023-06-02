@@ -7,74 +7,80 @@
 #include <future>
 #include "ThreadManager.h"
 #include "RefCounting.h"
+#include "Memory.h"
+#include "Allocator.h"
+#include "LockFreeStack.h"
 
 
-class Wraight : public RefCountable
+class Knight
 {
 public:
-	int _hp = 150;
-	int _posX = 0;
-	int _posY = 0;
-};
-
-using WraightRef = TSharedPtr<Wraight>;
-
-class Missile : public RefCountable
-{
-public:
-	void SetTarget(WraightRef target)
+	Knight()
 	{
-		_target = target;
+		cout << "Knight()" << endl;
 	}
 
-	bool Update()
+	Knight(int32 hp) : _hp(hp)
 	{
-		if (_target == nullptr) return true;
-		int posX = _target->_posX;
-		int posY = _target->_posY;
-
-		if (_target->_hp == 0)
-		{
-			_target->ReleaseRef();
-			_target = nullptr;
-		}
-		return false;
+		cout << "Knight(hp)" << endl;
 	}
 
-	WraightRef _target = nullptr;
-};
+	~Knight()
+	{
+		cout << "~Knight()" << endl;
+	}
 
-using MissileRef = TSharedPtr<Missile>;
+	int32 _hp = 0;
+};
+ 
+
+SListHeader* GHeader;
 
 int main()
 {
-	WraightRef wraight(new Wraight());
-	wraight->ReleaseRef();
-	MissileRef missile(new Missile());
-	missile->ReleaseRef();
+	GHeader = new SListHeader();
+	ASSERT_CRASH(((uint64)GHeader % 16) == 0);
+	InitializeHead(GHeader);
 
-	missile->SetTarget(wraight);
-
-	wraight->_hp = 0;
-	wraight = nullptr;
-
-
-	while (true)
+	for (int32 i = 0; i < 3; i++)
 	{
-		if (missile)
-		{
-			if (missile->Update())
+		GThreadManager->Launch([]()
 			{
-				missile->ReleaseRef();
-				missile = nullptr;
+				while (true)
+				{
+					Data* data = new Data();
+					ASSERT_CRASH(((uint64)data % 16) == 0);
+
+					PushEntrySList(GHeader, (SListEntry*)data);
+					this_thread::sleep_for(10ms);
+				}
 			}
-		}
+		);
 	}
-	
-	if (missile)
+
+	for (int32 i = 0; i < 2; i++)
 	{
-		missile->ReleaseRef();
-		missile = nullptr;
+		GThreadManager->Launch([]()
+			{
+				while (true)
+				{
+					Data* pop = nullptr;
+					pop = (Data*)PopEntrySList(GHeader);
+
+					if (pop)
+					{
+						cout << "Pop" << endl;
+						delete pop;
+					}
+					else
+					{
+						//cout << "None" << endl;
+					}
+				}
+			}
+		);
 	}
+
+	GThreadManager->Join();
 } 
 
