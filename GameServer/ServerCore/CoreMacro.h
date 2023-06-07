@@ -18,13 +18,13 @@
 	  Memory
 ---------------*/
 
-#ifdef _DEBUG
-#define xxalloc(size)	PoolAllocator::Alloc(size)
-#define xrelease(ptr)   PoolAllocator::Release(ptr)
-#else
-#define xalloc(size)	BaseAllocator::Alloc(size)
-#define xrelease(ptr)   BaeaAllocator::Release(ptr)
-#endif
+//#ifdef _DEBUG
+//#define xxalloc(size)	PoolAllocator::Alloc(size)
+//#define xrelease(ptr)   PoolAllocator::Release(ptr)
+//#else
+//#define xalloc(size)	BaseAllocator::Alloc(size)
+//#define xrelease(ptr)   BaeaAllocator::Release(ptr)
+//#endif
 
 /* -------------
 	  Crash

@@ -9,34 +9,33 @@
 #include "RefCounting.h"
 #include "Memory.h"
 #include "Allocator.h"
+#include "TypeCast.h"
 
+using TL = TypeList<class Player, class Knight, class Archer>;
 
-class Knight
+class Player
 {
 public:
-	int32 _hp = rand() % 1000;
+	Player()
+	{
+		_typeId = IndexOf<TL, Player>::value;
+	}
+
+	using TL = TL;
+	int _typeId;
 };
 
+class Knight : public Player
+{
+	Knight() { _typeId = IndexOf<TL, Knight>::value;  }
+};
 
-SLIST_HEADER* GHeader;
+class Archer : public Player
+{
+	Archer() { _typeId = IndexOf<TL, Archer>::value;  }
+};
 
 int main()
 {
-	for (int32 i = 0; i < 4; i++)
-	{
-		GThreadManager->Launch([]()
-			{
-				while (true)
-				{
-					Knight* knight = xnew<Knight>();
-					cout << knight->_hp << endl;
-					this_thread::sleep_for(10ms);
-					xdelete(knight);
-				}
-			}
-		);
-	}
-
-	GThreadManager->Join();
 } 
 
