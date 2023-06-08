@@ -18,24 +18,41 @@ class Player
 public:
 	Player()
 	{
-		_typeId = IndexOf<TL, Player>::value;
+		INIT_TL(Player);
 	}
 
-	using TL = TL;
-	int _typeId;
+	DECLARE_TL
 };
 
 class Knight : public Player
 {
-	Knight() { _typeId = IndexOf<TL, Knight>::value;  }
+public:
+	Knight() 
+	{
+		INIT_TL(Knight);
+	}
 };
 
 class Archer : public Player
 {
-	Archer() { _typeId = IndexOf<TL, Archer>::value;  }
+public:
+	Archer() 
+	{
+		INIT_TL(Knight);
+	}
 };
 
 int main()
 {
+	{
+		Player* player = new Knight();
+
+		bool canCast = CanCast<Knight*>(player);
+		Knight* knight = TypeCast<Knight*>(player);
+
+
+		delete player;
+	}
+
 } 
 
