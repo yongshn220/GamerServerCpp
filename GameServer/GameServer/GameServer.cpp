@@ -18,6 +18,16 @@ void HandleError(const char* cause)
 	cout << errCode << endl;
 }
 
+const int32 BUFSIZE = 1000;
+
+struct Session
+{
+	SOCKET socket = INVALID_SOCKET;
+	char recvBuffer[BUFSIZE] = {};
+	int32 recvBytes = 0;
+	int32 sendBytes = 0;
+};
+
 int main()
 {
 	// Init Winsock (ws2_32)
@@ -40,62 +50,88 @@ int main()
 
 	::listen(listenSocket, SOMAXCONN);
 
-	SOCKADDR_IN clientAddr;
-	int32 addrLen = sizeof(clientAddr);
+	// Select Model.
+
+	// socket set
+	// 1) Read, Write, OOB.
+	// 2) select(readSet, writeSet, exceptSet); -> Start observe
+
+
+	vector<Session> sessions;
+	sessions.reserve(100);
+
+	fd_set reads;
+	fd_set writes;
 
 	while (true)
 	{
-		SOCKET clientSocket = ::accept(listenSocket, (SOCKADDR*)&clientAddr, &addrLen);
-		if (clientSocket == INVALID_SOCKET)
+		// Init
+		FD_ZERO(&reads);
+		FD_ZERO(&writes);
+
+		// ListenSocket
+		FD_SET(listenSocket, &reads);
+
+		// Register all sockets
+		for (Session& s : sessions)
 		{
-			if (::WSAGetLastError() == WSAEWOULDBLOCK)
-			{
-				continue;
-			}
-		
-			//Error
-			break;
+			if (s.recvBytes <= s.sendBytes)
+				FD_SET(s.socket, &reads);
+			else
+				FD_SET(s.socket, &writes);
 		}
 
-		// Recv
-		while (true)
+		int32 retVal = ::select(0, &reads, &writes, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR)
+			break;
+
+		// Check Listener Socket.
+		if (FD_ISSET(listenSocket, &reads))
 		{
-			char recvBuffer[1000];
-			int32 recvLen = ::recv(clientSocket, recvBuffer, sizeof(recvBuffer), 0);
-			if (recvLen == SOCKET_ERROR)
+			SOCKADDR_IN clientAddr;
+			int32 addrLen = sizeof(clientAddr);
+			SOCKET clientSocket = ::accept(listenSocket, (SOCKADDR*)&clientAddr, &addrLen);
+			if (clientSocket != INVALID_SOCKET)
 			{
-				if (::WSAGetLastError() == WSAEWOULDBLOCK)
+				cout << "client connected" << endl;
+				sessions.push_back(Session{ clientSocket });
+			}
+		}
+
+		for (Session& s : sessions)
+		{
+
+			// Check READ
+			if (FD_ISSET(s.socket, &reads))
+			{
+				int32 recvLen = ::recv(s.socket, s.recvBuffer, BUFSIZE, 0);
+				if (recvLen <= 0)
 				{
+					// TODO : remove sessions.
 					continue;
 				}
 
-				break;
-			}
+				s.recvBytes = recvLen;
+			} 
 
-			else if (recvLen == 0)
+			// Check WRITE
+			if (FD_ISSET(s.socket, &writes))
 			{
-				break;
-			}
+				int32 sendLen = ::send(s.socket, &s.recvBuffer[s.sendBytes], s.recvBytes - s.sendBytes, 0);
+				if (sendLen == SOCKET_ERROR)
+					continue;
 
-			cout << "Recv Data Len" << recvLen << endl;
-
-			// Send
-			while (true)
-			{
-				if (::send(clientSocket, recvBuffer, recvLen, 0) == SOCKET_ERROR)
+				s.sendBytes += sendLen;
+				if (s.recvBytes == s.sendBytes)
 				{
-					if (::WSAGetLastError() == WSAEWOULDBLOCK)
-						continue;
-
-					break;
+					s.recvBytes = 0;
+					s.sendBytes = 0;
 				}
 
-				cout << "Send Data Len = " << recvLen << endl;
-				break;
 			}
 		}
+	
 	}
-
 
 	::WSACleanup();
 
