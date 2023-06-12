@@ -55,71 +55,109 @@ int main()
 	// socket set
 	// 1) Read, Write, OOB.
 	// 2) select(readSet, writeSet, exceptSet); -> Start observe
+	
+	// WSAEventSelect
+	// Create	     - WSACreateEvent (Manaual-Reset + Non-signaled)
+	// Remove        - WSACloseEvent
+	// Detect Signal - WSAWaitForMultipleEvents
+	// Detail Event  - WSAEnumNetworkEvents
+	// WSAEventSelect(socket, event, networkEvents);
+	// 
+	// FD_ACCEPT
+	// FD_READ
+	// FD+WRITE
+	// FD_CLOSE
+	// FD_CONNECT
+	// FD_OOB
 
+	// *** Caution
+	// - WSAEventSelect will automatically make the socket as 'nonblocking'
 
+	vector<WSAEVENT> wsaEvents;
 	vector<Session> sessions;
 	sessions.reserve(100);
+
+	WSAEVENT listenEvent = ::WSACreateEvent();
+	wsaEvents.push_back(listenEvent);
+	sessions.push_back(Session{ listenSocket });
+	if (::WSAEventSelect(listenSocket, listenEvent, FD_ACCEPT | FD_CLOSE) == SOCKET_ERROR)
+		return 0;
+	
+
 
 	fd_set reads;
 	fd_set writes;
 
 	while (true)
 	{
-		// Init
-		FD_ZERO(&reads);
-		FD_ZERO(&writes);
+		int32 index = ::WSAWaitForMultipleEvents(wsaEvents.size(), &wsaEvents[0], FALSE, WSA_INFINITE, FALSE);
+		if (index == WSA_WAIT_FAILED)
+			continue;
+		index -= WSA_WAIT_EVENT_0;
 
-		// ListenSocket
-		FD_SET(listenSocket, &reads);
+		
+		::WSAResetEvent(wsaEvents[index]);
 
-		// Register all sockets
-		for (Session& s : sessions)
+		WSANETWORKEVENTS networkEvents;
+		if (::WSAEnumNetworkEvents(sessions[index].socket, wsaEvents[index], &networkEvents) == SOCKET_ERROR)
+			continue;
+
+		// Check Listener Socket
+
+		if (networkEvents.lNetworkEvents & FD_ACCEPT)
 		{
-			if (s.recvBytes <= s.sendBytes)
-				FD_SET(s.socket, &reads);
-			else
-				FD_SET(s.socket, &writes);
-		}
+			if (networkEvents.iErrorCode[FD_ACCEPT_BIT] != 0)
+				continue;
 
-		int32 retVal = ::select(0, &reads, &writes, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR)
-			break;
-
-		// Check Listener Socket.
-		if (FD_ISSET(listenSocket, &reads))
-		{
 			SOCKADDR_IN clientAddr;
 			int32 addrLen = sizeof(clientAddr);
+
 			SOCKET clientSocket = ::accept(listenSocket, (SOCKADDR*)&clientAddr, &addrLen);
 			if (clientSocket != INVALID_SOCKET)
 			{
-				cout << "client connected" << endl;
+				cout << "Client Connected" << endl;
+
+				WSAEVENT clientEvent = ::WSACreateEvent();
+				wsaEvents.push_back(clientEvent);
 				sessions.push_back(Session{ clientSocket });
+				if (::WSAEventSelect(clientSocket, clientEvent, FD_READ | FD_WRITE | FD_CLOSE) == SOCKET_ERROR)
+					return 0;
+					
 			}
 		}
 
-		for (Session& s : sessions)
+		// Check Client Socket
+		if (networkEvents.lNetworkEvents & FD_READ || networkEvents.lNetworkEvents & FD_WRITE)
 		{
+			if ((networkEvents.lNetworkEvents & FD_READ) && (networkEvents.iErrorCode[FD_READ_BIT] != 0))
+				continue;
+			if ((networkEvents.lNetworkEvents & FD_WRITE) && (networkEvents.iErrorCode[FD_WRITE_BIT] != 0))
+				continue;
 
-			// Check READ
-			if (FD_ISSET(s.socket, &reads))
+			Session& s = sessions[index];
+
+			//Read
+			if (s.recvBytes == 0)
 			{
 				int32 recvLen = ::recv(s.socket, s.recvBuffer, BUFSIZE, 0);
-				if (recvLen <= 0)
+				if (recvLen == SOCKET_ERROR && ::WSAGetLastError() != WSAEWOULDBLOCK)
 				{
-					// TODO : remove sessions.
+					// TODO: Remove Session
 					continue;
 				}
 
 				s.recvBytes = recvLen;
-			} 
+				cout << "recv Data " << recvLen << endl;
+			}
 
-			// Check WRITE
-			if (FD_ISSET(s.socket, &writes))
+			//Write
+			if (s.recvBytes > s.sendBytes)
 			{
 				int32 sendLen = ::send(s.socket, &s.recvBuffer[s.sendBytes], s.recvBytes - s.sendBytes, 0);
-				if (sendLen == SOCKET_ERROR)
+				if (sendLen == SOCKET_ERROR && ::WSAGetLastError() != WSAEWOULDBLOCK)
+				{
 					continue;
+				}
 
 				s.sendBytes += sendLen;
 				if (s.recvBytes == s.sendBytes)
@@ -128,9 +166,16 @@ int main()
 					s.sendBytes = 0;
 				}
 
+				cout << "Send Data =" << sendLen << endl;
 			}
+
 		}
-	
+
+		// FD_CLOSE
+		if (networkEvents.lNetworkEvents & FD_CLOSE)
+		{
+
+		}
 	}
 
 	::WSACleanup();

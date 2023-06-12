@@ -15,6 +15,7 @@ void HandleError(const char* cause)
 
 int main()
 {
+	this_thread::sleep_for(2s);
 	// Init Winsock (ws2_32)
 	WSAData wsaData;
 	if (::WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
