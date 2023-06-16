@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <future>
 #include "ThreadManager.h"
+#include "Memory.h"
 
 #include <WinSock2.h>
 #include <mswsock.h>
@@ -25,8 +26,53 @@ struct Session
 	SOCKET socket = INVALID_SOCKET;
 	char recvBuffer[BUFSIZE] = {};
 	int32 recvBytes = 0;
-	int32 sendBytes = 0;
 };
+
+enum IO_TYPE
+{
+	READ,
+	WRITE,
+	ACCEPT,
+	CONNECT,
+};
+
+struct OverlappedEx
+{
+	WSAOVERLAPPED overlapped = {};
+	int32 type = 0;
+};
+
+
+void WorkerThreadMain(HANDLE iocpHandle)
+{
+	while (true)
+	{
+		DWORD bytesTransferred = 0;
+		Session* session = nullptr;
+		OverlappedEx* overlappedEx = nullptr;
+
+		
+		BOOL ret = ::GetQueuedCompletionStatus(iocpHandle, &bytesTransferred, 
+			(ULONG_PTR*)&session, (LPOVERLAPPED*)&overlappedEx, INFINITE);
+
+		if (ret == FALSE || bytesTransferred == 0)
+		{
+			continue;
+		}
+
+		ASSERT_CRASH(overlappedEx->type == IO_TYPE::READ);
+
+		cout << "Recv IOCP" << bytesTransferred << endl;
+
+		WSABUF wsaBuf;
+		wsaBuf.buf = session->recvBuffer;
+		wsaBuf.len = BUFSIZE;
+
+		DWORD recvLen = 0;
+		DWORD flags = 0;
+		::WSARecv(session->socket, &wsaBuf, 1, &recvLen, &flags, &overlappedEx->overlapped, NULL);
+	}
+}
 
 int main()
 {
@@ -36,9 +82,6 @@ int main()
 		return 0;
 	
 	SOCKET listenSocket = ::socket(AF_INET, SOCK_STREAM, 0);
-
-	u_long on = 1;
-	ioctlsocket(listenSocket, FIONBIO, &on);
 
 	SOCKADDR_IN serverAddr;
 	::memset(&serverAddr, 0, sizeof(serverAddr));
@@ -50,133 +93,46 @@ int main()
 
 	::listen(listenSocket, SOMAXCONN);
 
-	// Select Model.
+	vector<Session*> sessionManager;
 
-	// socket set
-	// 1) Read, Write, OOB.
-	// 2) select(readSet, writeSet, exceptSet); -> Start observe
-	
-	// WSAEventSelect
-	// Create	     - WSACreateEvent (Manaual-Reset + Non-signaled)
-	// Remove        - WSACloseEvent
-	// Detect Signal - WSAWaitForMultipleEvents
-	// Detail Event  - WSAEnumNetworkEvents
-	// WSAEventSelect(socket, event, networkEvents);
-	// 
-	// FD_ACCEPT
-	// FD_READ
-	// FD+WRITE
-	// FD_CLOSE
-	// FD_CONNECT
-	// FD_OOB
+	HANDLE iocpHandle = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 
-	// *** Caution
-	// - WSAEventSelect will automatically make the socket as 'nonblocking'
-
-	vector<WSAEVENT> wsaEvents;
-	vector<Session> sessions;
-	sessions.reserve(100);
-
-	WSAEVENT listenEvent = ::WSACreateEvent();
-	wsaEvents.push_back(listenEvent);
-	sessions.push_back(Session{ listenSocket });
-	if (::WSAEventSelect(listenSocket, listenEvent, FD_ACCEPT | FD_CLOSE) == SOCKET_ERROR)
-		return 0;
-	
-
-
-	fd_set reads;
-	fd_set writes;
+	for (int32 i = 0; i < 5; i++)
+		GThreadManager->Launch([=]() { WorkerThreadMain(iocpHandle); });
 
 	while (true)
 	{
-		int32 index = ::WSAWaitForMultipleEvents(wsaEvents.size(), &wsaEvents[0], FALSE, WSA_INFINITE, FALSE);
-		if (index == WSA_WAIT_FAILED)
-			continue;
-		index -= WSA_WAIT_EVENT_0;
+		SOCKADDR_IN clientAddr;
+		int32 addrLen = sizeof(clientAddr);
+
+		SOCKET clientSocket = ::accept(listenSocket, (SOCKADDR*)&clientAddr, &addrLen);
+		if (clientSocket == INVALID_SOCKET) {
+			return 0;
+		}
+
+		Session* session = xnew<Session>();
+		session->socket = clientSocket;
+		sessionManager.push_back(session);
 
 		
-		::WSAResetEvent(wsaEvents[index]);
+		cout << "Client Connected" << endl;
 
-		WSANETWORKEVENTS networkEvents;
-		if (::WSAEnumNetworkEvents(sessions[index].socket, wsaEvents[index], &networkEvents) == SOCKET_ERROR)
-			continue;
+		::CreateIoCompletionPort((HANDLE)clientSocket, iocpHandle, /*Key*/(ULONG_PTR)session, 0);
+		
+		WSABUF wsaBuf;
+		wsaBuf.buf = session->recvBuffer;
+		wsaBuf.len = BUFSIZE;
 
-		// Check Listener Socket
+		OverlappedEx* overlappedEx = new OverlappedEx();
+		overlappedEx->type = IO_TYPE::READ;
 
-		if (networkEvents.lNetworkEvents & FD_ACCEPT)
-		{
-			if (networkEvents.iErrorCode[FD_ACCEPT_BIT] != 0)
-				continue;
+		DWORD recvLen = 0;
+		DWORD flags = 0;
+		::WSARecv(clientSocket, &wsaBuf, 1, &recvLen, &flags, &overlappedEx->overlapped, NULL);
 
-			SOCKADDR_IN clientAddr;
-			int32 addrLen = sizeof(clientAddr);
-
-			SOCKET clientSocket = ::accept(listenSocket, (SOCKADDR*)&clientAddr, &addrLen);
-			if (clientSocket != INVALID_SOCKET)
-			{
-				cout << "Client Connected" << endl;
-
-				WSAEVENT clientEvent = ::WSACreateEvent();
-				wsaEvents.push_back(clientEvent);
-				sessions.push_back(Session{ clientSocket });
-				if (::WSAEventSelect(clientSocket, clientEvent, FD_READ | FD_WRITE | FD_CLOSE) == SOCKET_ERROR)
-					return 0;
-					
-			}
-		}
-
-		// Check Client Socket
-		if (networkEvents.lNetworkEvents & FD_READ || networkEvents.lNetworkEvents & FD_WRITE)
-		{
-			if ((networkEvents.lNetworkEvents & FD_READ) && (networkEvents.iErrorCode[FD_READ_BIT] != 0))
-				continue;
-			if ((networkEvents.lNetworkEvents & FD_WRITE) && (networkEvents.iErrorCode[FD_WRITE_BIT] != 0))
-				continue;
-
-			Session& s = sessions[index];
-
-			//Read
-			if (s.recvBytes == 0)
-			{
-				int32 recvLen = ::recv(s.socket, s.recvBuffer, BUFSIZE, 0);
-				if (recvLen == SOCKET_ERROR && ::WSAGetLastError() != WSAEWOULDBLOCK)
-				{
-					// TODO: Remove Session
-					continue;
-				}
-
-				s.recvBytes = recvLen;
-				cout << "recv Data " << recvLen << endl;
-			}
-
-			//Write
-			if (s.recvBytes > s.sendBytes)
-			{
-				int32 sendLen = ::send(s.socket, &s.recvBuffer[s.sendBytes], s.recvBytes - s.sendBytes, 0);
-				if (sendLen == SOCKET_ERROR && ::WSAGetLastError() != WSAEWOULDBLOCK)
-				{
-					continue;
-				}
-
-				s.sendBytes += sendLen;
-				if (s.recvBytes == s.sendBytes)
-				{
-					s.recvBytes = 0;
-					s.sendBytes = 0;
-				}
-
-				cout << "Send Data =" << sendLen << endl;
-			}
-
-		}
-
-		// FD_CLOSE
-		if (networkEvents.lNetworkEvents & FD_CLOSE)
-		{
-
-		}
 	}
+
+	GThreadManager->Join();
 
 	::WSACleanup();
 
