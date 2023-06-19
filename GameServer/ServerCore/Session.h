@@ -24,7 +24,7 @@ public:
 public:
 	/* Interface */
 	virtual HANDLE   GetHandle() override;
-	virtual void	 Dispatch(class IocpEvent* icopEvnet, int32 numOfBytes = 0) override;
+	virtual void	 Dispatch(class IocpEvent* iocpEvent, int32 numOfBytes = 0) override;
 
 
 public:

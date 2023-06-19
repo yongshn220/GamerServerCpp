@@ -64,17 +64,17 @@ HANDLE Listener::GetHandle()
 
 void Listener::Dispatch(IocpEvent* iocpEvent, int32 numOfBytes)
 {
-	ASSERT_CRASH(iocpEvent->GetType() == EventType::Accept);
+	ASSERT_CRASH(iocpEvent->eventType == EventType::Accept);
 	AcceptEvent* acceptEvent = static_cast<AcceptEvent*>(iocpEvent);
 	ProcessAccept(acceptEvent);
 }
 
 void Listener::RegisterAccept(AcceptEvent* acceptEvent)
 {
-	Session* session = xnew<Session>();
+	SessionRef session = MakeShared<Session>();
 
 	acceptEvent->Init();
-	acceptEvent->SetSession(session);
+	acceptEvent->session = session;
 
 	DWORD bytesReceived = 0;
 
@@ -93,7 +93,7 @@ void Listener::RegisterAccept(AcceptEvent* acceptEvent)
 
 void Listener::ProcessAccept(AcceptEvent* acceptEvent)
 {
-	Session* session = acceptEvent->GetSession();
+	SessionRef session = acceptEvent->session;
 
 	if (false == SocketUtils::SetUpdateAcceptSocket(session->GetSocket(), _socket))
 	{
