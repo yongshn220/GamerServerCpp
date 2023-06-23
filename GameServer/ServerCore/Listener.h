@@ -4,20 +4,22 @@
 
 
 class AcceptEvent;
+class ServerService;
+
 
 /*-----------------
 	  Listener
 -------------------*/
 
-class Listener : IocpObject
+class Listener : public IocpObject
 {
 public:
-	Listener() = default;
+	Listener() {};
 	~Listener();
 
 public:
 	/* Used outside of class*/
-	bool StartAccept(NetAddress netAddress);
+	bool StartAccept(ServerServiceRef service);
 	void CloseSocket();
 
 public:
@@ -33,5 +35,6 @@ private:
 protected:
 	SOCKET _socket = INVALID_SOCKET;
 	xvector<AcceptEvent*> _acceptEvents;
+	ServerServiceRef _service;
 };
 

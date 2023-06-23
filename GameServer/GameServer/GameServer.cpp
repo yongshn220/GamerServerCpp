@@ -11,21 +11,20 @@
 #include "SocketUtils.h"
 #include "Listener.h"
 
+#include "Service.h"
+#include "Session.h"'
+
+
 int main()
 {
-
-	/*SOCKET socket = SocketUtils::CreateSocket();
+	ServerServiceRef service = MakeShared<ServerService>(
+		NetAddress(L"127.0.0.1", 7777),
+		MakeShared<IocpCore>(),
+		MakeShared<Session>,
+		10
+	);
 	
-	SocketUtils::BindAnyAddress(socket, 7777);
-
-	SocketUtils::Listen(socket);
-
-	SOCKET clientSocket = ::accept(socket, nullptr, nullptr);
-
-	cout << "Client Connected" << endl;*/
-
-	ListenerRef listener = MakeShared<Listener>();
-	listener->StartAccept(NetAddress(L"127.0.0.1", 7777));
+	ASSERT_CRASH(service->Start());
 
 	for(int32 i = 0; i < 1; i++)
 	{
@@ -33,11 +32,11 @@ int main()
 			{
 				while (true)
 				{
-					GIocpCore.Dispatch();
+					service->GetIocpCore()->Dispatch();
 				}
 			});
 	}
 
 	GThreadManager->Join();
-} 
+}
 

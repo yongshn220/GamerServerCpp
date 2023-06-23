@@ -32,6 +32,14 @@ public:
 #endif
 	}
 
+	template<typename... Args>
+	static shared_ptr<Type> MakeShared(Args&&... args)
+	{
+		shared_ptr<Type> ptr = { Pop(forward<Args>(args)...), Push };
+		return ptr;
+	}
+
+
 private:
 	static int32		s_allocSize;
 	static MemoryPool   s_pool;
