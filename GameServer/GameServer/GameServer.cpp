@@ -14,9 +14,17 @@
 #include "Service.h"
 #include "Session.h"'
 
+class Test
+{
+
+};
+
 
 int main()
 {
+	weak_ptr<Test> test = make_shared<Test>();
+	test.lock();
+
 	ServerServiceRef service = MakeShared<ServerService>(
 		NetAddress(L"127.0.0.1", 7777),
 		MakeShared<IocpCore>(),
