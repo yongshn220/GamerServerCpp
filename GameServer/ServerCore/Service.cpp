@@ -52,7 +52,17 @@ ClientService::ClientService(NetAddress targetAddress, IocpCoreRef core, Session
 
 bool ClientService::Start()
 {
-	// todo
+	if (CanStart() == false)
+		return false;
+
+	const int32 sessionCount = GetMaxSessionCount();
+	for (int32 i = 0; i < sessionCount; i++)
+	{
+		SessionRef session = CreateSession();
+		if (session->Connect() == false)
+			return false;
+	}
+
 	return true;
 }
 
@@ -70,7 +80,6 @@ bool ServerService::Start()
 	_listener = MakeShared<Listener>();
 	if (_listener == nullptr)
 		return false;
-	//shared_ptr<Service> serv = shared_from_this();
 
 	ServerServiceRef service = static_pointer_cast<ServerService>(shared_from_this());
 	if (_listener->StartAccept(service) == false)

@@ -21,6 +21,7 @@ public:
 
 public:
 	void				Send(BYTE* buffer, int32 len);
+	bool				Connect();
 	void				Disconnect(const WCHAR* reason);
 
 	shared_ptr<Service> GetService() { return _service.lock(); }
@@ -43,11 +44,13 @@ private:
 
 private:
 	/* Transmit */
-	void			RegisterConnect();
+	bool			RegisterConnect();
+	bool			RegisterDisconnect();
 	void			RegisterRecv();
 	void			RegisterSend(SendEvent* sendEvent);
 
 	void			ProcessConnect();
+	void			ProcessDisconnect();
 	void			ProcessRecv(int32 numOfBytes);
 	void			ProcessSend(SendEvent* sendEvent, int32 numOfBytes);
 
@@ -73,6 +76,8 @@ private:
 
 private:
 	/* For reuse IocpEvent*/
-	RecvEvent	_recvEvent;
+	ConnectEvent	_connectEvent;
+	DisconnectEvent _disconnectEvent;
+	RecvEvent		_recvEvent;
 };
 
