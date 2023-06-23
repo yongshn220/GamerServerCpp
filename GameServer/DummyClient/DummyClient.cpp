@@ -10,6 +10,11 @@ char sendBuffer[] = "Hello World";
 class ServerSession : public Session
 {
 public:
+	~ServerSession()
+	{
+		cout << "~ServerSession" << endl;
+	}
+
 	virtual void OnConnected() override
 	{
 		Send((BYTE*)sendBuffer, sizeof(sendBuffer));

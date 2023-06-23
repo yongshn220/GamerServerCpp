@@ -7,6 +7,11 @@
 class GameSession : public Session
 {
 public:
+	~GameSession()
+	{
+		cout << "~GameSession" << endl;
+	}
+
 	virtual int32 OnRecv(BYTE* buffer, int32 len) override
 	{
 		cout << "On Recv Len = " << len << endl;
