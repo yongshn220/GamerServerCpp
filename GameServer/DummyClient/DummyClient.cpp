@@ -4,7 +4,7 @@
 #include "Session.h"
 #include "ThreadManager.h"
 
-char sendBuffer[] = "Hello World";
+char sendData[] = "Hello World";
 
 
 class ServerSession : public Session
@@ -16,8 +16,11 @@ public:
 	}
 
 	virtual void OnConnected() override
-	{
-		Send((BYTE*)sendBuffer, sizeof(sendBuffer));
+ 	{
+		SendBufferRef sendBuffer = MakeShared<SendBuffer>(4096);
+		sendBuffer->CopyData(sendData, sizeof(sendData));
+
+		Send(sendBuffer);
 	}
 
 	virtual void OnDisconnected() override
@@ -29,9 +32,11 @@ public:
 	{
 		cout << "On Recv Len = " << len << endl;
 
-		this_thread::sleep_for(1s);
+		this_thread::sleep_for(2s);
 
-		Send((BYTE*)sendBuffer, sizeof(sendBuffer));
+		SendBufferRef sendBuffer = MakeShared<SendBuffer>(4096);
+		sendBuffer->CopyData(buffer, len);
+		Send(sendBuffer);
 
 		return len;
 	}
@@ -49,7 +54,7 @@ int main()
 		NetAddress(L"127.0.0.1", 7777),
 		MakeShared<IocpCore>(),
 		MakeShared<ServerSession>,
-		1);
+		2);
 
 	ASSERT_CRASH(service->Start());
 
