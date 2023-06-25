@@ -17,8 +17,9 @@ public:
 
 	virtual void OnConnected() override
  	{
-		SendBufferRef sendBuffer = MakeShared<SendBuffer>(4096);
-		sendBuffer->CopyData(sendData, sizeof(sendData));
+		SendBufferRef sendBuffer = GSendBufferManager->Open(4096);
+		::memcpy(sendBuffer->Buffer(), sendData, sizeof(sendData));
+		sendBuffer->Close(sizeof(sendData));
 
 		Send(sendBuffer);
 	}
@@ -33,9 +34,11 @@ public:
 		cout << "On Recv Len = " << len << endl;
 
 		this_thread::sleep_for(2s);
+		
+		SendBufferRef sendBuffer = GSendBufferManager->Open(4096);
+		::memcpy(sendBuffer->Buffer(), sendData, sizeof(sendData));
+		sendBuffer->Close(sizeof(sendData));
 
-		SendBufferRef sendBuffer = MakeShared<SendBuffer>(4096);
-		sendBuffer->CopyData(buffer, len);
 		Send(sendBuffer);
 
 		return len;
