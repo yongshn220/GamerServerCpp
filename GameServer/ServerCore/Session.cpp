@@ -19,14 +19,24 @@ Session::~Session()
 
 void Session::Send(SendBufferRef sendBuffer)
 {
-	WRITE_LOCK;
+	if (IsConnected() == false)
+		return;
 
-	_sendQueue.push(sendBuffer);
+	bool registerSend = false;
 
-	if (_sendRegistered.exchange(true) == false)
 	{
-		RegisterSend();
+		WRITE_LOCK;
+
+		_sendQueue.push(sendBuffer);
+
+		if (_sendRegistered.exchange(true) == false)
+		{
+			registerSend = true;
+		}
 	}
+
+	if (registerSend)
+		RegisterSend();
 }
 
 bool Session::Connect()
@@ -142,6 +152,7 @@ void Session::RegisterRecv()
 		int32 errorCode = ::WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
 		{
+			cout << "RegisterRecv ERror" << endl;
 			HandleError(errorCode);
 			_recvEvent.owner = nullptr; // Release ref
 		}
@@ -157,7 +168,7 @@ void Session::RegisterSend()
 	_sendEvent.owner = shared_from_this(); // add ref
 
 	{
-		WRITE_LOCK; // 2nd Lock -> make sure it locked (in case the code for 1st lock changed)
+		WRITE_LOCK; 
 	
 		int32 writeSize = 0;
 		while (_sendQueue.empty() == false)
@@ -190,6 +201,7 @@ void Session::RegisterSend()
 		int32 errorCode = ::WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
 		{
+			cout << "Register Send ERROR " << endl;
 			HandleError(errorCode);
 			_sendEvent.owner = nullptr;
 			_sendEvent.sendBuffers.clear();
@@ -279,4 +291,40 @@ void Session::HandleError(int32 errorCode)
 		cout << "Handle Error : " << errorCode << endl;
 		break;
 	}
+}
+
+/*--------------------
+	PacketSession
+---------------------*/
+
+PacketSession::PacketSession()
+{
+}
+
+PacketSession::~PacketSession()
+{
+}
+
+int32 PacketSession::OnRecv(BYTE* buffer, int32 len)
+{
+	int32 processLen = 0;
+
+	while (true)
+	{
+		int32 dataSize = len - processLen;
+
+		if (dataSize < sizeof(PacketHeader))
+			break;
+
+		PacketHeader header = *(reinterpret_cast<PacketHeader*>(&buffer[processLen]));
+
+		if (dataSize < header.size)
+			break;
+
+		OnRecvPacket(&buffer[processLen], header.size);
+
+		processLen += header.size;
+	}
+
+	return processLen;
 }

@@ -10,7 +10,9 @@ class GameSessionManager
 public:
 	void Add(GameSessionRef session);
 	void Remove(GameSessionRef session);
-	void BroadCast(SendBufferRef sendBuffer);
+	void Broadcast(SendBufferRef sendBuffer);
+
+	bool IsEmpty() { return _sessions.size() == 0; }
 
 private:
 	USE_LOCK;

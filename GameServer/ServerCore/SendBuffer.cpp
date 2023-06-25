@@ -37,6 +37,8 @@ SendBufferChunk::~SendBufferChunk()
 
 void SendBufferChunk::Reset()
 {
+	_open = false;
+	_usedSize = 0;
 }
 
 SendBufferRef SendBufferChunk::Open(uint32 allocSize)
@@ -72,7 +74,7 @@ SendBufferRef SendBufferManager::Open(uint32 size)
 
 	ASSERT_CRASH(LSendBufferChunk->IsOpen() == false);
 
-	if (LSendBufferChunk->FreeSize() >= size)
+	if (LSendBufferChunk->FreeSize() < size)
 	{
 		LSendBufferChunk = Pop();
 		LSendBufferChunk->Reset();
@@ -89,11 +91,13 @@ SendBufferChunkRef SendBufferManager::Pop()
 		WRITE_LOCK;
 		if (_sendBufferChunks.empty() == false)
 		{
+			cout << "------------- Pop" << endl;
 			SendBufferChunkRef sendBufferChunk = _sendBufferChunks.back();
 			_sendBufferChunks.pop_back();
 			return sendBufferChunk;
 		}
 	}
+	cout << "------------- New Chunk" << endl;
 
 	return SendBufferChunkRef(xnew<SendBufferChunk>(), PushGlobal);
 }
@@ -106,6 +110,7 @@ void SendBufferManager::Push(SendBufferChunkRef buffer)
 
 void SendBufferManager::PushGlobal(SendBufferChunk* buffer)
 {
+	cout << "------------- Push global" << endl;
 	GSendBufferManager->Push(SendBufferChunkRef(buffer, PushGlobal));
 }
 

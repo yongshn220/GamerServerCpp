@@ -16,11 +16,18 @@ void GameSessionManager::Remove(GameSessionRef session)
 	_sessions.erase(session);
 }
 
-void GameSessionManager::BroadCast(SendBufferRef sendBuffer)
+void GameSessionManager::Broadcast(SendBufferRef sendBuffer)
 {
 	WRITE_LOCK;
-	for (GameSessionRef session : _sessions)
+	try {
+		for (GameSessionRef session : _sessions)
+		{
+			session->Send(sendBuffer);
+		}
+	}
+	catch (...)
 	{
-		session->Send(sendBuffer);
+		cout << "BreadCast Err" << endl;
+		ASSERT_CRASH(false);
 	}
 }
