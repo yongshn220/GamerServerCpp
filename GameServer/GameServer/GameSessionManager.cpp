@@ -19,15 +19,8 @@ void GameSessionManager::Remove(GameSessionRef session)
 void GameSessionManager::Broadcast(SendBufferRef sendBuffer)
 {
 	WRITE_LOCK;
-	try {
-		for (GameSessionRef session : _sessions)
-		{
-			session->Send(sendBuffer);
-		}
-	}
-	catch (...)
+	for (GameSessionRef session : _sessions)
 	{
-		cout << "BreadCast Err" << endl;
-		ASSERT_CRASH(false);
+		session->Send(sendBuffer);
 	}
 }

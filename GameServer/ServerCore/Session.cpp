@@ -51,10 +51,6 @@ void Session::Disconnect(const WCHAR* reason)
 
 	wcout << "Disconnected : " << reason << endl;
 
-	OnDisconnected();
-	
-	GetService()->ReleaseSession(GetSessionRef());
-
 	RegisterDisconnect();
 }
 
@@ -168,7 +164,7 @@ void Session::RegisterSend()
 	_sendEvent.owner = shared_from_this(); // add ref
 
 	{
-		WRITE_LOCK; 
+		WRITE_LOCK;
 	
 		int32 writeSize = 0;
 		while (_sendQueue.empty() == false)
@@ -225,6 +221,9 @@ void Session::ProcessConnect()
 
 void Session::ProcessDisconnect()
 {
+	OnDisconnected();
+	GetService()->ReleaseSession(GetSessionRef());
+
 	_disconnectEvent.owner = nullptr; // release ref
 }
 
