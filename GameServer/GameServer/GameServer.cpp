@@ -5,6 +5,7 @@
 #include "Session.h"
 #include "GameSession.h"
 #include "GameSessionManager.h"
+#include <BufferWriter.h>
 
 int main()
 {
@@ -32,16 +33,18 @@ int main()
 
 	while (true)
 	{
-		if (GSessionManager.IsEmpty())
-			continue;
+		SendBufferRef sendBuffer = GSendBufferManager->Open(4096);
+		
+		BufferWriter bw(sendBuffer->Buffer(), 4096);
 
-		SendBufferRef sendBuffer = GSendBufferManager->Open(5500);
+		PacketHeader* header = bw.Reserve<PacketHeader>();
 
-		BYTE* buffer = sendBuffer->Buffer();
-		((PacketHeader*)buffer)->size = (sizeof(sendData) + sizeof(PacketHeader));
-		((PacketHeader*)buffer)->id = 1; 
-		::memcpy(&buffer[4], sendData, sizeof(sendData));
-		sendBuffer->Close((sizeof(sendData) + sizeof(PacketHeader)));
+		bw << (uint64)1001 << (uint32)100 << (uint16)10;
+
+		header->size = bw.WriteSize();
+		header->id = 1; 
+
+		sendBuffer->Close(bw.WriteSize());
 
 		GSessionManager.Broadcast(sendBuffer);
 		this_thread::sleep_for(250ms);
