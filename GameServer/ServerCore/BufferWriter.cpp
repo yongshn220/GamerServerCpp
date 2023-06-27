@@ -14,8 +14,10 @@ BufferWriter::~BufferWriter()
 {
 }
 
-bool BufferWriter::Write(void* dest, uint32 len)
+bool BufferWriter::Write(void* src, uint32 len)
 {
-	return false;
+	memcpy(&_buffer[_pos], src, len);
+	_pos += len;
+	return true;
 }
  

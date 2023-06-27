@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include <iostream>
 #include "ThreadManager.h"
 #include "Service.h"
@@ -36,7 +36,7 @@ int main()
 	{
 		vector<BuffData> buffs{ BuffData{100, 1.0f}, BuffData{200, 2.0f}, BuffData{300, 3.0f} };
 
-		SendBufferRef sendBuffer = ServerPacketHandler::Make_S_TEST(1001, 100, 12, buffs);
+		SendBufferRef sendBuffer = ServerPacketHandler::Make_S_TEST(1001, 100, 12, buffs, L"안녕");
 		GSessionManager.Broadcast(sendBuffer);
 		this_thread::sleep_for(250ms);
 	}
