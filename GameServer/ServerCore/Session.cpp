@@ -41,6 +41,7 @@ void Session::Send(SendBufferRef sendBuffer)
 
 bool Session::Connect()
 {
+	cout << "Session Connect" << endl;
 	return RegisterConnect();
 }
 
@@ -255,6 +256,7 @@ void Session::ProcessRecv(int32 numOfBytes)
 
 	_recvBuffer.Clean();
 
+	cout << "Process Recv" << endl;
 	RegisterRecv();
 }
 

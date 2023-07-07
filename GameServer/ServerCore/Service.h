@@ -35,7 +35,9 @@ public:
 public:
 	ServiceType		GetServiceType() { return _type; }
 	NetAddress		GetNetAddress() { return _netAddress; }
-	IocpCoreRef&	GetIocpCore() { return _iocpCore; }
+	IocpCoreRef&	GetIocpCore() { 
+		return _iocpCore; 
+	}
 
 protected:
 	USE_LOCK;
@@ -50,6 +52,9 @@ protected:
 	SessionFactory    _sessionFactory;
 };
 
+/*----------------------
+	 ClientService
+-----------------------*/
 
 class ClientService : public Service
 {
@@ -60,6 +65,10 @@ public:
 	virtual bool Start() override;
 };
 
+
+/*----------------------
+	 ServerService
+-----------------------*/
 
 class ServerService : public Service
 {

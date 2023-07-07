@@ -6,14 +6,14 @@
 #include "GameSession.h"
 #include "GameSessionManager.h"
 #include "BufferWriter.h"
-#include "ServerPacketHandler.h"
+#include "ClientPacketHandler.h"
 #include "Protocol.pb.h"
 
 int main()
 {
-	ServerPacketHandler::Init();
+	ClientPacketHandler::Init();
 	
-	ServerServiceRef service = MakeShared<ServerService>(
+	ClientServiceRef service = MakeShared<ClientService>(
 		NetAddress(L"127.0.0.1", 7777),
 		MakeShared<IocpCore>(),
 		MakeShared<GameSession>,
@@ -22,7 +22,7 @@ int main()
 	
 	ASSERT_CRASH(service->Start());
 
-	for(int32 i = 0; i < 5; i++)
+	for(int32 i = 0; i < 3; i++)
 	{
 		GThreadManager->Launch([=]()
 			{
@@ -55,7 +55,7 @@ int main()
 			data->add_victims(6000);
 			data->add_victims(7000);
 		}
-		SendBufferRef sendBuffer = ServerPacketHandler::MakeSendBuffer(pkt);
+		SendBufferRef sendBuffer = ClientPacketHandler::MakeSendBuffer(pkt);
 		GSessionManager.Broadcast(sendBuffer);
 
 		this_thread::sleep_for(250ms);
