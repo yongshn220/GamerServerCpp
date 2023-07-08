@@ -18,11 +18,9 @@ public:
 
 	virtual void OnConnected() override
  	{
-		/*SendBufferRef sendBuffer = GSendBufferManager->Open(4096);
-		::memcpy(sendBuffer->Buffer(), sendData, sizeof(sendData));
-		sendBuffer->Close(sizeof(sendData));
-
-		Send(sendBuffer);*/
+		Protocol::C_LOGIN pkt;
+		auto sendBuffer = ServerPacketHandler::MakeSendBuffer(pkt);
+		Send(sendBuffer);
 	}
 
 	virtual void OnDisconnected() override
@@ -53,7 +51,7 @@ int main()
 		NetAddress(L"127.0.0.1", 7777),
 		MakeShared<IocpCore>(),
 		MakeShared<ServerSession>,
-		1);
+		100);
 
 	ASSERT_CRASH(service->Start());
 
@@ -66,6 +64,16 @@ int main()
 					service->GetIocpCore()->Dispatch();
 				}
 			});
+	}
+
+	Protocol::C_CHAT chatPkt;
+	chatPkt.set_msg(u8"Hello World!");
+	auto sendBuffer = ServerPacketHandler::MakeSendBuffer(chatPkt);
+
+	while (true)
+	{
+		service->Broadcast(sendBuffer);
+		this_thread::sleep_for(1s);
 	}
 
 	GThreadManager->Join();
