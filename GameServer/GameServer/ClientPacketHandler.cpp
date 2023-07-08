@@ -13,7 +13,11 @@ bool Handle_INVALID(PacketSessionRef& session, BYTE* buffer, int32 len)
 
 bool Handle_C_TEST(PacketSessionRef& session, Protocol::C_TEST& pkt)
 {
-	// TODO
-
-	return true;
+	return false;
 }
+
+bool Handle_C_MOVE(PacketSessionRef& session, Protocol::C_MOVE& pkt)
+{
+	return false;
+}
+

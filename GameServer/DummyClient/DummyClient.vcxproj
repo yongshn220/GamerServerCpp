@@ -179,7 +179,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
-      <Command>CALL $(solutionDir)\Common\protobuf\bin\GenPackets.bat</Command>
+      <Command>CALL $(solutionDir)\Common\Protobuf\bin\GenPackets.bat</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
